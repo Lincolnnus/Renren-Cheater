@@ -3,7 +3,7 @@
    $app_id = "89c1c88a16e64c0285a2559ee7030896";
    $app_secret = "f19442c83af04721a9760dd447663049";
 
-   $my_url = "http://localhost/zbq/index.php";//Please configure your app accordingly
+   $my_url = "http://apps.renren.com/renrenzbq/index.php";//Please configure your app accordingly
    $grant_type="authorization_code";
 
    session_start();
@@ -31,24 +31,43 @@
      $numberOfFriends = $userInfor->response->friendCount;
 
      $totalPage = ceil($numberOfFriends/$pageSize);
-     echo '<html><head><script> function visit(){';
-     echo "var ni = document.getElementById('myDiv');";
+     echo '<script> var totalFriends = '.$numberOfFriends.'; var friends = new Array('.$numberOfFriends.');';
      for($i = 0; $i < $totalPage; $i++){  
         $graph_url = "https://api.renren.com/v2/user/friend/list?access_token=" 
        . $params->access_token."&userId=".$params->user->id."&pageSize=".$pageSize."&pageNumber=".($i+1);
         $friends = json_decode(file_get_contents($graph_url));
 
-        if ((count($friends->response)) < $pageSize) 
-          $pageSize = count($friends->response);
         for($j = 0; $j < $pageSize; $j++){
-          echo 'var newdiv = document.createElement("div"); newdiv.innerHTML = "Friend '.$friends->response[$j]->id.' has been visited!"; ni.appendChild(newdiv);';
-          echo 'window.open("http://renren.com/'.$friends->response[$j]->id.'");';
+          if($j<count($friends->response)){
+            echo 'friends['.($i*$pageSize+$j).']='.$friends->response[$j]->id.';';
+         }
         }
      }
-     echo '}</script></head>';
-     echo '<body><input type="hidden" value="0" id="theValue"/><div id="myDiv"></div><button onclick="visit();">One Click Visit</button></body></html>';
+     echo '</script>';
    }
    else {
      echo("The state does not match. You may be a victim of CSRF.");
    }
  ?>
+<html>
+<head>
+  <script>
+     function visit(){
+      var numFriendsToVisit = document.getElementById("theValue").value;
+      for(var i=0;i<numFriendsToVisit;i++){
+        var friend=friends[Math.floor(Math.random() * totalFriends)];
+        var ni = document.getElementById('myDiv');
+        var newdiv = document.createElement("div"); 
+        newdiv.innerHTML ='Friend ' +friend+'has been visited!';
+        ni.appendChild(newdiv);
+        window.open('http://renren.com/'+friend);
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="myDiv"></div>
+  Number of Friends to Visit <input id="theValue"/>
+  <button onclick="visit();">One Click Visit</button>
+</body>
+</html>
