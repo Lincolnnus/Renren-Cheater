@@ -1,6 +1,5 @@
 <?php 
-   $numberOfFriends = 2; // Total Number of Friends (Be Reminded that the Total Procedure takes $numberOfFriends*$timeInterval Time)
-   $timeInterval = 5;//Time Interval for Visiting New Friend(second)
+   $pageSize = 100;
    $app_id = "89c1c88a16e64c0285a2559ee7030896";
    $app_secret = "f19442c83af04721a9760dd447663049";
 
@@ -13,7 +12,7 @@
    if(empty($code)) {
      $_SESSION['state'] = md5(uniqid(rand(), TRUE)); //CSRF protection
      $dialog_url = "http://graph.renren.com/oauth/authorize?client_id=" 
-       . $app_id."&response_type=code" ."&redirect_uri=" . urlencode($my_url) . "&state="
+       . $app_id."&response_type=code&scope=" ."&redirect_uri=" . urlencode($my_url) . "&state="
        . $_SESSION['state'];
 
      echo("<script> top.location.href='" . $dialog_url . "'</script>");
@@ -25,17 +24,31 @@
        . "&client_secret=" . $app_secret ."&grant_type=" . $grant_type . "&code=" . $code;
      $response = @file_get_contents($token_url);
      $params = json_decode($response);
-     $graph_url = "https://api.renren.com/v2/user/friend/list?access_token=" 
-       . $params->access_token."&userId=".$params->user->id."&pageSize=".$numberOfFriends."&pageNumber=1";
-     $friends = json_decode(file_get_contents($graph_url));
-     for($i = 0; $i < $numberOfFriends; $i++){
-        echo("Visited Renren ID ".$friends->response[$i]->id);
-        echo '<script>window.open("http://renren.com/'.$friends->response[$i]->id.'", "_blank", "width=400,height=500")</script>';
-        sleep($timeInterval);
+
+     $profile_url="https://api.renren.com/v2/profile/get?access_token=".$params->access_token."&userId=".$params->user->id;
+     $response = @file_get_contents($profile_url);
+     $userInfor = json_decode($response);
+     $numberOfFriends = $userInfor->response->friendCount;
+
+     $totalPage = ceil($numberOfFriends/$pageSize);
+     echo '<html><head><script> function visit(){';
+     echo "var ni = document.getElementById('myDiv');";
+     for($i = 0; $i < $totalPage; $i++){  
+        $graph_url = "https://api.renren.com/v2/user/friend/list?access_token=" 
+       . $params->access_token."&userId=".$params->user->id."&pageSize=".$pageSize."&pageNumber=".($i+1);
+        $friends = json_decode(file_get_contents($graph_url));
+
+        if ((count($friends->response)) < $pageSize) 
+          $pageSize = count($friends->response);
+        for($j = 0; $j < $pageSize; $j++){
+          echo 'var newdiv = document.createElement("div"); newdiv.innerHTML = "Friend '.$friends->response[$j]->id.' has been visited!"; ni.appendChild(newdiv);';
+          echo 'window.open("http://renren.com/'.$friends->response[$j]->id.'");';
+        }
      }
+     echo '}</script></head>';
+     echo '<body><input type="hidden" value="0" id="theValue"/><div id="myDiv"></div><button onclick="visit();">One Click Visit</button></body></html>';
    }
    else {
      echo("The state does not match. You may be a victim of CSRF.");
    }
-
  ?>
